@@ -200,7 +200,7 @@ function addRole() {
   })
 }
 
-function viewAllDepartments() {
+function viewDepartment() {
   var queryString = "SELECT * FROM department";
   connection.query(queryString, function (err, result) {
       if (err) throw err;
