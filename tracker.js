@@ -28,7 +28,7 @@ function runSearch() {
     inquirer
       .prompt({
         name: "action",
-        type: "checkbox",
+        type: "list",
         message: "What would you like to do?",
         choices: [
           "View all employees",
@@ -84,22 +84,59 @@ function runSearch() {
     });
 }
 
-function viewEmployees() {
-  var queryString = "SELECT employee.id, employee.first_name, employee.last_name, roles.title as position, roles.salary, department.name as department, manager.first_name as manager FROM employee LEFT JOIN roles on employee.role_id = roles.id LEFT JOIN department on roles.department_id = department.id LEFT JOIN employee manager on manager.id = employee.manager_id ";
-  connection.query(queryString, function (err, result) {
-      if (err) throw err;
-      console.table(result);
-      promptUser();
-  });
+function viewEmployees(){
+  let query = "SELECT employee.EmployeeID, employee.first_name, employee.last_name, roles.title, department.dep_name, roles.salary, employee.ManagerID";
+  query += " FROM roles"; 
+  query += " LEFT OUTER JOIN department ON department.DepartmentID=roles.DepartmentID";
+  query += " LEFT OUTER JOIN employee ON roles.RoleID=employee.RoleID"; 
+  query += " ORDER BY EmployeeID;";
+
+  connection.query(query, async function(err, res){
+      if(err) throw err;
+      try{
+          console.table(res);
+          await runTool();
+      }
+      catch(e) {
+         console.log(e);
+      }
+      
+  }); 
 }
 
-function viewDepartment() {
-  var queryString = "SELECT department.name";
-  connection.query(queryString, function (err, result) {
-      if (err) throw err;
-      console.table(result);
-      promptUser();
-  });
+function allEmpDep() {
+  inquirer
+    .prompt({
+      name: "action",
+      type: "list",
+      message: "What department would you like to search?",
+      choices: [
+          "Sales",
+          "Legal",
+          "Engineering",
+          "Finance"
+      ]
+    })
+    .then(function(answer) {
+      let depChoice = answer.action;
+      let query = "SELECT employee.EmployeeID, employee.first_name, employee.last_name, roles.title, department.dep_name, roles.salary, employee.ManagerID"; 
+      query += " FROM department";  
+      query += " LEFT OUTER JOIN roles ON roles.DepartmentID=department.DepartmentID";
+      query += " LEFT OUTER JOIN employee ON employee.RoleID=roles.RoleID"; 
+      query += " WHERE ?;"      
+      
+      connection.query(query, { dep_name: depChoice }, async function(err, res) {
+          if(err) throw err;
+          try{
+              console.table(res);
+              await runTool();
+          }
+          catch(e){
+              console.log(e);
+          }
+        
+      });
+    });
 }
 
 function addEmployee() {
