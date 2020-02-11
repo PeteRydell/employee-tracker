@@ -72,24 +72,24 @@ function runSearch() {
           break;
 
         case "Update employee department":
-          viewRoles();
+          updateDepartment();
           break;
         }
     });
 }
 
 function viewEmployees(){
-  let query = "SELECT employee.EmployeeID, employee.first_name, employee.last_name, roles.title, department.dep_name, roles.salary, employee.ManagerID";
-  query += " FROM roles"; 
-  query += " LEFT OUTER JOIN department ON department.DepartmentID=roles.DepartmentID";
-  query += " LEFT OUTER JOIN employee ON roles.RoleID=employee.RoleID"; 
-  query += " ORDER BY EmployeeID;";
+  let query = "SELECT employee.id, employee.first_name, employee.last_name, employee_role.title, department.name, employee_role.salary, employee.manager_id";
+  query += " FROM employee_role"; 
+  query += " LEFT OUTER JOIN department ON department.id=employee_role.id";
+  query += " LEFT OUTER JOIN employee ON employee_role.id=employee.id"; 
+  query += " ORDER BY employee.id;";
 
   connection.query(query, async function(err, res){
       if(err) throw err;
       try{
           console.table(res);
-          await runTool();
+          await runSearch();
       }
       catch(e) {
          console.log(e);
@@ -98,7 +98,7 @@ function viewEmployees(){
   }); 
 }
 
-function allEmpDep() {
+function viewDepartment() {
   inquirer
     .prompt({
       name: "action",
@@ -106,24 +106,24 @@ function allEmpDep() {
       message: "What department would you like to search?",
       choices: [
           "Sales",
-          "Legal",
           "Engineering",
-          "Finance"
+          "Finance",
+          "Legal"
       ]
     })
     .then(function(answer) {
       let depChoice = answer.action;
-      let query = "SELECT employee.EmployeeID, employee.first_name, employee.last_name, roles.title, department.dep_name, roles.salary, employee.ManagerID"; 
+      let query = "SELECT employee.employee.id, employee.first_name, employee.last_name, employee_role.title, department.name, employee_role.salary, employee.manager_id"; 
       query += " FROM department";  
-      query += " LEFT OUTER JOIN roles ON roles.DepartmentID=department.DepartmentID";
-      query += " LEFT OUTER JOIN employee ON employee.RoleID=roles.RoleID"; 
+      query += " LEFT OUTER JOIN employee_role ON employee_role.id=department.id";
+      query += " LEFT OUTER JOIN employee ON employee.id=employee_role.id"; 
       query += " WHERE ?;"      
       
-      connection.query(query, { dep_name: depChoice }, async function(err, res) {
+      connection.query(query, { name: depChoice }, async function(err, res) {
           if(err) throw err;
           try{
               console.table(res);
-              await runTool();
+              await runSearch();
           }
           catch(e){
               console.log(e);
@@ -133,28 +133,43 @@ function allEmpDep() {
     });
 }
 
+function viewEmployeeManager(){
+  let query = "SELECT employee.id, employee.first_name, employee.last_name, employee_role.title, department.name, employee_role.salary, employee.manager_id"
+  query += " FROM employee_role"; 
+  query += " LEFT OUTER JOIN department ON department.id=employee_role.id";
+  query += " LEFT OUTER JOIN employee ON employee_role.id=employee.id"; 
+  query += " ORDER BY id;";
+
+  connection.query(query, async function(err, res){
+      if(err) throw err;
+      try{
+          for (let i = 0; i<res.length; i++){
+              managers.push(JSON.stringify(res[i].first_name));
+          }
+      }
+      catch(e) {
+         console.log(e);
+      }
+      
+  }); 
+
+}
 function addEmployee() {
     return inquirer.prompt([
         {
             type: "input",
             message: "What is the employee's first name?",
             name: "first_name",
-            validate: function validateFirst(name) {
-                return name !== '';
-            }
         },
         {
             type: "input",
             message: "What is the employee's last name?",
             name: "last_name",
-            validate: function validateLast(name) {
-                return name !== '';
-            }
         },
         {
             type: "list",
             message: "What is the employee's role?",
-            choices: roles,
+            choices: employee_role,
             name: "role_id"
         },
         {
@@ -163,82 +178,172 @@ function addEmployee() {
             choices: manager_id,
             name: "manager_id"
         }
-    ]).then(function ({ first_name, last_name, role_id, manager_id }) {
+    ]).then(function(answer) {
+      let firstName = answer.firstName;
+      let lastName = answer.lastName;
+      let role_id = answer.role_id;
+      let manager_id = answer.manager_id;
 
-        var queryString = `INSERT INTO employee (first_name, last_name, role_id, manager_id) VALUES ('${first_name}', '${last_name}', ${role_id}, ${manager_id})`;
-        connection.query(queryString, function (err, result) {
-            if (err) throw err;
-            console.log(result);
-            viewAllEmployees();
-            promptUser();
-        });
-    })
-}
-
-
-function viewRoles() {
-  var queryString = "SELECT roles.title as position, roles.salary, department.name FROM roles LEFT JOIN department on roles.id = department.id";
-  connection.query(queryString, function (err, result) {
-      if (err) throw err;
-      console.table(result);
-      promptUser();
-  });
-};
-
-function addRole() {
+      let query = "INSERT INTO employee (first_name, last_name, role_id, manager_id)"; 
+      query += ` VALUES ("${firstName}", "${lastName}", ${role_id}, ${manager_id}); `; 
     
-  inquirer.prompt([
-      {
-          type: "input",
-          message: "What is the name of the role?",
-          name: "title",
-          validate: function validateTitle(name) {
-              return name !== '';
+          
+      
+      connection.query(query, async function(err, res) {
+          if(err) throw err;
+          try{
+              await viewEmployees();
           }
-      },
-      {
-          type: "input",
-          message: "What is the salary of the role?",
-          name: "salary",
-          validate: function validateSalary(name) {
-              return name !== '';
+          catch(e){
+              console.log(e);
           }
-      },
-      {
-          type: "list",
-          message: "Which department does this role belong to? (1-sales, 2-engineering, 3-finance, 4-legal)",
-          choices: ["sales", "legal", "engineering"],
-          name: "department_id",
-
-      }
-  ]).then(function ({ title, salary, department_id }) {
-      if (department_id === "sales"){
-          department_id = 1
-      } else if (department_id === "engineering"){
-          department_id = 2
-      } else if (department_id === "finance"){
-          department_id = 3
-      } else if (department_id === "legal"){
-        department_id = 4
-      }
-      var queryString = `INSERT INTO roles (title, salary, department_id) VALUES ('${title}', ${salary}, ${department_id})`;
-      connection.query(queryString, function (err, result) {
-          if (err) throw err;
-          console.log(result);
-          viewAllRoles();
-          promptUser();
-      })
-  })
+        
+      });
+    });
 }
 
-function viewDepartment() {
-  var queryString = "SELECT * FROM department";
-  connection.query(queryString, function (err, result) {
-      if (err) throw err;
-      console.table(result);
-      promptUser();
-  });
-};
+
+function updateRole() {
+  inquirer
+    .prompt([
+      
+      {
+      name: "updateRole",
+      type: "input",
+      message: "Which employee would you like to update?"
+      },
+
+      {
+      name: "newRole",
+      type: "input",
+      message: "What is their new role?"
+      }
+  ])
+    .then(function(answer) {
+      let updateRole = answer.updateRole;
+      let newRole = answer.newRole;
+      let query = "UPDATE employee_role";
+      query += " LEFT OUTER JOIN department ON department.id=employee_role.id";
+      query += " LEFT OUTER JOIN employee ON employee_role.id=employee.id"; 
+      query += ` SET title = "${newRole}"`;
+      query += ` WHERE first_name = "${updateRole}";`; 
+      
+      connection.query(query, async function(err, res) {
+          if(err) throw err;
+          try{
+              await viewEmployees();
+          }
+          catch(e){
+              console.log(e);
+          }
+        
+      });
+    });
+}
+
+function updateManager() {
+  inquirer
+    .prompt([
+      
+      {
+      name: "updateManager",
+      type: "input",
+      message: "Which employee would you like to update?"
+      },
+
+      {
+      name: "newManID",
+      type: "input",
+      message: "What is their new manager? (Suggestion: view all employees to idenfify the employee ID you would like to use to update the manager)"
+      }
+  ])
+    .then(function(answer) {
+      let updateManager = answer.updateManager;
+      let newManID = answer.newManID;
+      let query = "UPDATE employee";
+      query += " LEFT OUTER JOIN employee_role ON employee_role.id=employee.id"; 
+      query += " LEFT OUTER JOIN department ON department.id=employee_role.id";
+      query += ` SET ManagerID = "${newManID}"`;
+      query += ` WHERE first_name = "${updateManager}";`; 
+      
+      connection.query(query, async function(err, res) {
+          if(err) throw err;
+          try{
+              await viewEmployees();
+          }
+          catch(e){
+              console.log(e);
+          }
+        
+      });
+    });
+}
+
+function removeEmployee() {
+  inquirer
+    .prompt(
+      
+      {
+      name: "employeeName",
+      type: "input",
+      message: "Which employee would you like to remove?"
+      }
+  )
+    .then(function(answer) {
+      let employeeName = answer.employeeName;
+      let query = "DELETE FROM employee";
+      query += ` WHERE first_name = "${employeeName}";`; 
+      
+      connection.query(query, async function(err, res) {
+          if(err) throw err;
+          try{
+              await viewEmployees();
+          }
+          catch(e){
+              console.log(e);
+          }
+        
+      });
+    });
+}
+
+function updateDepartment() {
+  inquirer
+    .prompt([
+      
+      {
+      name: "upDep",
+      type: "input",
+      message: "Which employee would you like to update?"
+      },
+
+      {
+      name: "newDep",
+      type: "input",
+      message: "What is their new department?"
+      }
+  ])
+    .then(function(answer) {
+      let upEmp = answer.upEmp;
+      let newDep = answer.newDep;
+      let query = "UPDATE department";
+      query += " LEFT OUTER JOIN roles ON department.id=employee_role.id";
+      query += " LEFT OUTER JOIN employee ON employee_role.id=employee.role_id"; 
+      query += ` SET dep_name = "${newDep}"`;
+      query += ` WHERE first_name = "${upEmp}";`; 
+      
+      connection.query(query, async function(err, res) {
+          if(err) throw err;
+          try{
+              await viewEmployees();
+          }
+          catch(e){
+              console.log(e);
+          }
+        
+      });
+    });
+}
 
 
 
