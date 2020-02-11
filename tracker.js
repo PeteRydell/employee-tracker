@@ -38,9 +38,7 @@ function runSearch() {
           "Remove employee",
           "Update employee role",
           "Update employee manager",
-          "View all roles",
-          "Add role",
-          "Remove role"
+          "Update employee department",
         ]
       })
       .then(function(answer) {
@@ -53,6 +51,10 @@ function runSearch() {
           viewDepartment();
           break;
   
+        case "View all employees by manager":
+          viewEmployeeManager();
+          break;
+
         case "Add employee":
           addEmployee();
           break;
@@ -69,16 +71,8 @@ function runSearch() {
           updateManager();
           break;
 
-        case "View all roles":
+        case "Update employee department":
           viewRoles();
-          break;
-          
-        case "Add role":
-          addRole();
-          break;
-
-        case "Remove role":
-          removeRole();
           break;
         }
     });
