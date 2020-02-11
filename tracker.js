@@ -113,7 +113,7 @@ function viewDepartment() {
     })
     .then(function(answer) {
       let depChoice = answer.action;
-      let query = "SELECT employee.employee.id, employee.first_name, employee.last_name, employee_role.title, department.name, employee_role.salary, employee.manager_id"; 
+      let query = "SELECT employee.id, employee.first_name, employee.last_name, employee_role.title, department.name, employee_role.salary, employee.manager_id"; 
       query += " FROM department";  
       query += " LEFT OUTER JOIN employee_role ON employee_role.id=department.id";
       query += " LEFT OUTER JOIN employee ON employee.id=employee_role.id"; 
